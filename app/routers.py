@@ -1,21 +1,33 @@
-from fastapi import APIRouter,HTTPException
-from app.models import Node
+from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy.orm import Session
+from app.models import Node, NodeDB
+from app.database import get_db
 from typing import List
+
 router = APIRouter()
-nodes_db: List[Node] = []
+
 @router.post("/nodes", response_model=Node)
-def create_node(node: Node):
-    for existing_node in nodes_db:
-        if existing_node.id == node.id:
-            raise HTTPException(status_code=400, detail="Node with this ID already exists")
-    nodes_db.append(node)
-    return node
-@router.get("/nodes",response_model = List[Node])
-def get_all_nodes():
-    return nodes_db
+def create_node(node: Node, db: Session = Depends(get_db)):
+    db_node = NodeDB(
+        id=node.id,
+        name=node.name,
+        type=node.type,
+        latitude=node.latitude,
+        longitude=node.longitude,
+        is_operational=node.is_operational
+    )
+    db.add(db_node)
+    db.commit()
+    db.refresh(db_node)
+    return db_node
+
+@router.get("/nodes", response_model=List[Node])
+def get_all_nodes(db: Session = Depends(get_db)):
+    return db.query(NodeDB).all()
+
 @router.get("/nodes/{node_id}", response_model=Node)
-def get_node(node_id: int):
-    for node in nodes_db:
-        if node.id == node_id:
-            return node
-    raise HTTPException(status_code=404, detail="Node not found")
+def get_node(node_id: int, db: Session = Depends(get_db)):
+    node = db.query(NodeDB).filter(NodeDB.id == node_id).first()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found")
+    return node
