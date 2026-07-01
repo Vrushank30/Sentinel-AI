@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from app.models import Node, NodeDB
 from app.database import get_db
 from typing import List
-
+from app.simulation import build_city_graph, simulate_disaster
 router = APIRouter()
 
 @router.post("/nodes", response_model=Node)
@@ -31,3 +31,17 @@ def get_node(node_id: int, db: Session = Depends(get_db)):
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     return node
+@router.post("/simulate")
+def run_simulation(disaster: dict, db: Session = Depends(get_db)):
+    nodes = db.query(NodeDB).all()
+    
+    if not nodes:
+        raise HTTPException(status_code=400, detail="No nodes found. Add nodes first.")
+    
+    edges = disaster.get("edges", [])
+    affected_node_ids = disaster.get("affected_node_ids", [])
+    
+    G = build_city_graph(nodes, edges)
+    result = simulate_disaster(G, affected_node_ids)
+    
+    return result
