@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from sqlalchemy import Column, Integer, String, Float, Boolean
 from app.database import Base
 
-# SQLAlchemy model — this is the actual database table
+# SQLAlchemy model — nodes table
 class NodeDB(Base):
     __tablename__ = "nodes"
 
@@ -13,7 +13,15 @@ class NodeDB(Base):
     longitude = Column(Float, nullable=False)
     is_operational = Column(Boolean, default=True)
 
-# Pydantic model — this is for API validation
+# SQLAlchemy model — users table
+class UserDB(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String, unique=True, nullable=False)
+    hashed_password = Column(String, nullable=False)
+
+# Pydantic models — API validation
 class NodeType(str):
     HOSPITAL = "hospital"
     POWER_STATION = "power_station"
@@ -29,6 +37,17 @@ class Node(BaseModel):
     latitude: float
     longitude: float
     is_operational: bool = True
+
+    class Config:
+        from_attributes = True
+
+class UserCreate(BaseModel):
+    username: str
+    password: str
+
+class UserResponse(BaseModel):
+    id: int
+    username: str
 
     class Config:
         from_attributes = True
