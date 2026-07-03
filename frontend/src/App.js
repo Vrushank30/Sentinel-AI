@@ -118,7 +118,7 @@ function App() {
           <h1 style={styles.title}>🛡️ Sentinel AI</h1>
           <p style={styles.subtitle}>Disaster Infrastructure Simulation Platform</p>
         </div>
-        <button onClick={logout} style={{ background: 'transparent', color: '#888', border: '1px solid #3d3f4e', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', color: 'white' }}>
+        <button onClick={logout} style={{ background: 'transparent', border: '1px solid #3d3f4e', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', color: 'white' }}>
           Logout
         </button>
       </div>
