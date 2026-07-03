@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import axios from 'axios';
 import 'leaflet/dist/leaflet.css';
 
-const API = 'http://localhost:8000';
+const API = 'https://web-production-f4b5e.up.railway.app';
 
 const DISASTER_TYPES = [
   { label: '🌋 Earthquake', affected: [2], description: 'Power station collapse' },
