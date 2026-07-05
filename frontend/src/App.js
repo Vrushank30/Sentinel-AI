@@ -45,6 +45,15 @@ function App() {
     }
   };
 
+  const register = async () => {
+    try {
+      await axios.post(`${API}/register`, { username, password });
+      alert('Registered successfully! You can now login.');
+    } catch {
+      alert('Username already exists or registration failed.');
+    }
+  };
+
   const logout = () => {
     setToken('');
     localStorage.removeItem('token');
@@ -106,6 +115,7 @@ function App() {
           <input style={styles.input} placeholder="Username" onChange={e => setUsername(e.target.value)} />
           <input style={styles.input} placeholder="Password" type="password" onChange={e => setPassword(e.target.value)} />
           <button style={styles.btn('#3b82f6')} onClick={login}>Login</button>
+          <button style={styles.btn('#28a745')} onClick={register}>Register</button>
         </div>
       </div>
     );
