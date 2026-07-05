@@ -6,6 +6,8 @@ from app import models
 
 models.NodeDB.metadata.create_all(bind=engine)
 models.UserDB.metadata.create_all(bind=engine)
+models.EdgeDB.metadata.create_all(bind=engine)
+models.SimulationHistoryDB.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Sentinel AI", version="0.1")
 

@@ -1,12 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from app.models import Node, NodeDB
+from app.models import Node, NodeDB, UserDB, UserCreate, UserResponse, EdgeDB, EdgeCreate, Edge, SimulationHistoryDB
 from app.database import get_db
-from typing import List
-from app.simulation import build_city_graph, simulate_disaster
-router = APIRouter()
-from app.models import Node, NodeDB, UserDB, UserCreate, UserResponse
 from app.auth import hash_password, verify_password, create_access_token, verify_token
+from app.simulation import build_city_graph, simulate_disaster
+from typing import List
+from datetime import datetime
+
+router = APIRouter()
+
+# --- Node endpoints ---
 
 @router.post("/nodes", response_model=Node)
 def create_node(node: Node, db: Session = Depends(get_db)):
@@ -33,21 +36,63 @@ def get_node(node_id: int, db: Session = Depends(get_db)):
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     return node
-@router.post("/simulate")
+
+# --- Edge endpoints ---
+
+@router.post("/edges", response_model=Edge)
+def create_edge(edge: EdgeCreate, db: Session = Depends(get_db)):
+    db_edge = EdgeDB(
+        from_node=edge.from_node,
+        to_node=edge.to_node,
+        weight=edge.weight
+    )
+    db.add(db_edge)
+    db.commit()
+    db.refresh(db_edge)
+    return db_edge
+
+@router.get("/edges", response_model=List[Edge])
+def get_all_edges(db: Session = Depends(get_db)):
+    return db.query(EdgeDB).all()
+
+# --- Simulation endpoint ---
+
 @router.post("/simulate")
 def run_simulation(disaster: dict, db: Session = Depends(get_db), current_user: str = Depends(verify_token)):
     nodes = db.query(NodeDB).all()
-    
+    edges = db.query(EdgeDB).all()
+
     if not nodes:
         raise HTTPException(status_code=400, detail="No nodes found. Add nodes first.")
-    
-    edges = disaster.get("edges", [])
+
+    edge_list = [{"from_node": e.from_node, "to_node": e.to_node} for e in edges]
     affected_node_ids = disaster.get("affected_node_ids", [])
-    
-    G = build_city_graph(nodes, edges)
+    disaster_type = disaster.get("disaster_type", "unknown")
+
+    G = build_city_graph(nodes, edge_list)
     result = simulate_disaster(G, affected_node_ids)
-    
+
+    # Save to history
+    history = SimulationHistoryDB(
+        disaster_type=disaster_type,
+        affected_node_ids=str(affected_node_ids),
+        failed_count=result["failed_count"],
+        operational_count=result["operational_count"],
+        timestamp=datetime.utcnow().isoformat()
+    )
+    db.add(history)
+    db.commit()
+
     return result
+
+# --- Simulation history endpoint ---
+
+@router.get("/history")
+def get_history(db: Session = Depends(get_db)):
+    history = db.query(SimulationHistoryDB).order_by(SimulationHistoryDB.id.desc()).all()
+    return history
+
+# --- Auth endpoints ---
 
 @router.post("/register", response_model=UserResponse)
 def register(user: UserCreate, db: Session = Depends(get_db)):
