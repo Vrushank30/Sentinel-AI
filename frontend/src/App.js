@@ -11,13 +11,6 @@ const DISASTER_TYPES = [
   { label: '⚡ Power Failure', affected: [2, 4], description: 'Grid and towers down' },
 ];
 
-const EDGES = [
-  { from_node: 1, to_node: 2 },
-  { from_node: 2, to_node: 3 },
-  { from_node: 2, to_node: 4 },
-  { from_node: 3, to_node: 4 },
-];
-
 function App() {
   const [nodes, setNodes] = useState([]);
   const [token, setToken] = useState(localStorage.getItem('token') || '');
@@ -67,7 +60,10 @@ function App() {
       const disaster = DISASTER_TYPES[selectedDisaster];
       const res = await axios.post(
         `${API}/simulate`,
-        { affected_node_ids: disaster.affected, edges: EDGES },
+        {
+          affected_node_ids: disaster.affected,
+          disaster_type: disaster.label
+        },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSimulationResult(res.data);
