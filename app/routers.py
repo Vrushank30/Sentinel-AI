@@ -66,6 +66,27 @@ def create_edge(edge: EdgeCreate, db: Session = Depends(get_db)):
 def get_all_edges(db: Session = Depends(get_db)):
     return db.query(EdgeDB).all()
 
+@router.post("/auto-edges")
+def auto_generate_edges(db: Session = Depends(get_db)):
+    db.query(EdgeDB).delete()
+    all_nodes = db.query(NodeDB).all()
+    hospitals = [n for n in all_nodes if n.type == "hospital"]
+    water = [n for n in all_nodes if n.type == "water_supply"]
+
+    added = 0
+    for h in hospitals:
+        for w in water:
+            db.add(EdgeDB(from_node=h.id, to_node=w.id, weight=1.0))
+            added += 1
+
+    for i in range(len(hospitals)):
+        for j in range(i+1, min(i+3, len(hospitals))):
+            db.add(EdgeDB(from_node=hospitals[i].id, to_node=hospitals[j].id, weight=0.8))
+            added += 1
+
+    db.commit()
+    return {"message": f"Auto-generated {added} edges between real infrastructure nodes"}
+
 # --- Simulation endpoint ---
 
 @router.post("/simulate")
@@ -135,20 +156,36 @@ def import_osm_data(db: Session = Depends(get_db)):
     if not nodes:
         raise HTTPException(status_code=404, detail="No data fetched from OpenStreetMap")
 
-    added = 0
+    # Clear existing nodes and edges
+    db.query(EdgeDB).delete()
+    db.query(NodeDB).delete()
+    db.commit()
+
     for node in nodes:
-        existing = db.query(NodeDB).filter(NodeDB.id == node["id"]).first()
-        if not existing:
-            db_node = NodeDB(
-                id=node["id"],
-                name=node["name"],
-                type=node["type"],
-                latitude=node["latitude"],
-                longitude=node["longitude"],
-                is_operational=True
-            )
-            db.add(db_node)
-            added += 1
+        db_node = NodeDB(
+            id=node["id"],
+            name=node["name"],
+            type=node["type"],
+            latitude=node["latitude"],
+            longitude=node["longitude"],
+            is_operational=True
+        )
+        db.add(db_node)
+    db.commit()
+
+    # Auto generate edges
+    all_nodes = db.query(NodeDB).all()
+    hospitals = [n for n in all_nodes if n.type == "hospital"]
+    water = [n for n in all_nodes if n.type == "water_supply"]
+
+    for h in hospitals:
+        for w in water:
+            db.add(EdgeDB(from_node=h.id, to_node=w.id, weight=1.0))
+
+    for i in range(len(hospitals)):
+        for j in range(i+1, min(i+3, len(hospitals))):
+            db.add(EdgeDB(from_node=hospitals[i].id, to_node=hospitals[j].id, weight=0.8))
 
     db.commit()
-    return {"message": f"Imported {added} real infrastructure nodes from OpenStreetMap"}
+
+    return {"message": f"Imported {len(nodes)} real nodes and auto-generated edges from OpenStreetMap"}
