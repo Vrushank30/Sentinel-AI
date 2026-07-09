@@ -6,9 +6,9 @@ import 'leaflet/dist/leaflet.css';
 const API = 'https://web-production-f4b5e.up.railway.app';
 
 const DISASTER_TYPES = [
-  { label: '🌋 Earthquake', affected: [2], description: 'Power station collapse' },
-  { label: '🌊 Flood', affected: [3], description: 'Water supply contaminated' },
-  { label: '⚡ Power Failure', affected: [2, 4], description: 'Grid and towers down' },
+  { label: '🌋 Earthquake', affected: [10, 11], description: 'Hospitals collapse' },
+  { label: '🌊 Flood', affected: [20, 21], description: 'Water supply contaminated' },
+  { label: '⚡ Power Failure', affected: [12, 13], description: 'Critical facilities down' },
 ];
 
 function App() {
@@ -131,7 +131,6 @@ function App() {
 
       <div style={styles.body}>
         <div style={styles.sidebar}>
-
           <div style={styles.card}>
             <div style={styles.cardTitle}>Total Nodes</div>
             <div style={styles.stat}>{nodes.length}</div>
@@ -182,7 +181,6 @@ function App() {
               </button>
             )}
           </div>
-
         </div>
 
         <div style={styles.map}>
