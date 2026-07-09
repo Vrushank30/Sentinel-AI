@@ -6,6 +6,7 @@ from app.auth import hash_password, verify_password, create_access_token, verify
 from app.simulation import build_city_graph, simulate_disaster
 from typing import List
 from datetime import datetime
+from app.osm import get_all_infrastructure
 
 router = APIRouter()
 
@@ -36,6 +37,16 @@ def get_node(node_id: int, db: Session = Depends(get_db)):
     if not node:
         raise HTTPException(status_code=404, detail="Node not found")
     return node
+
+@router.delete("/nodes/cleanup")
+def cleanup_fake_nodes(db: Session = Depends(get_db)):
+    fake_ids = [1, 2, 3, 4]
+    for id in fake_ids:
+        node = db.query(NodeDB).filter(NodeDB.id == id).first()
+        if node:
+            db.delete(node)
+    db.commit()
+    return {"message": "Fake nodes removed. Only real OSM data remains."}
 
 # --- Edge endpoints ---
 
@@ -72,7 +83,6 @@ def run_simulation(disaster: dict, db: Session = Depends(get_db), current_user: 
     G = build_city_graph(nodes, edge_list)
     result = simulate_disaster(G, affected_node_ids)
 
-    # Save to history
     history = SimulationHistoryDB(
         disaster_type=disaster_type,
         affected_node_ids=str(affected_node_ids),
@@ -115,3 +125,30 @@ def login(user: UserCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid username or password")
     token = create_access_token(data={"sub": db_user.username})
     return {"access_token": token, "token_type": "bearer"}
+
+# --- OSM import endpoint ---
+
+@router.post("/import-osm")
+def import_osm_data(db: Session = Depends(get_db)):
+    nodes = get_all_infrastructure("Bengaluru, India")
+
+    if not nodes:
+        raise HTTPException(status_code=404, detail="No data fetched from OpenStreetMap")
+
+    added = 0
+    for node in nodes:
+        existing = db.query(NodeDB).filter(NodeDB.id == node["id"]).first()
+        if not existing:
+            db_node = NodeDB(
+                id=node["id"],
+                name=node["name"],
+                type=node["type"],
+                latitude=node["latitude"],
+                longitude=node["longitude"],
+                is_operational=True
+            )
+            db.add(db_node)
+            added += 1
+
+    db.commit()
+    return {"message": f"Imported {added} real infrastructure nodes from OpenStreetMap"}
