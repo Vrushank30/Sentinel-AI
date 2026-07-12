@@ -7,6 +7,7 @@ from app.simulation import build_city_graph, simulate_disaster
 from typing import List
 from datetime import datetime
 from app.osm import get_all_infrastructure
+from app.weather import get_current_weather
 
 router = APIRouter()
 
@@ -100,9 +101,10 @@ def run_simulation(disaster: dict, db: Session = Depends(get_db), current_user: 
     edge_list = [{"from_node": e.from_node, "to_node": e.to_node} for e in edges]
     affected_node_ids = disaster.get("affected_node_ids", [])
     disaster_type = disaster.get("disaster_type", "unknown")
+    severity = disaster.get("severity", 5)
 
     G = build_city_graph(nodes, edge_list)
-    result = simulate_disaster(G, affected_node_ids)
+    result = simulate_disaster(G, affected_node_ids, severity)
 
     history = SimulationHistoryDB(
         disaster_type=disaster_type,
@@ -156,7 +158,6 @@ def import_osm_data(db: Session = Depends(get_db)):
     if not nodes:
         raise HTTPException(status_code=404, detail="No data fetched from OpenStreetMap")
 
-    # Clear existing nodes and edges
     db.query(EdgeDB).delete()
     db.query(NodeDB).delete()
     db.commit()
@@ -173,7 +174,6 @@ def import_osm_data(db: Session = Depends(get_db)):
         db.add(db_node)
     db.commit()
 
-    # Auto generate edges
     all_nodes = db.query(NodeDB).all()
     hospitals = [n for n in all_nodes if n.type == "hospital"]
     water = [n for n in all_nodes if n.type == "water_supply"]
@@ -189,3 +189,9 @@ def import_osm_data(db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": f"Imported {len(nodes)} real nodes and auto-generated edges from OpenStreetMap"}
+
+# --- Weather endpoint ---
+
+@router.get("/weather")
+def get_weather():
+    return get_current_weather()
